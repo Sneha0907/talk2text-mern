@@ -82,13 +82,16 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
 
     // ✅ Save Data in Supabase
     console.log("🔍 Inserting into Supabase...");
-    const { data, error } = await supabase.from("audio_files").insert([
-      {
-        file_name: req.file.originalname,
-        file_url: "", // You can add Supabase Storage URL later
-        transcription: transcription,
-      },
-    ]).select();
+    const { data, error } = await supabase
+      .from("audio_files")
+      .insert([
+        {
+          file_name: req.file.originalname,
+          file_url: "", // Later you can add Supabase Storage URL
+          transcription: transcription,
+        },
+      ])
+      .select();
 
     if (error) {
       console.error("❌ Supabase Insert Error:", error);
@@ -102,6 +105,27 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
   } catch (error) {
     console.error("❌ Server Error:", error);
     res.status(500).json({ error: "Transcription failed" });
+  }
+});
+
+// ✅ Fetch Previous Transcriptions Route
+app.get("/transcriptions", async (req, res) => {
+  try {
+    console.log("🔍 Fetching previous transcriptions...");
+    const { data, error } = await supabase
+      .from("audio_files")
+      .select("id, file_name, transcription, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("❌ Error fetching transcriptions:", error);
+      return res.status(500).json({ error: "Failed to fetch transcriptions" });
+    }
+
+    res.json({ message: "Success", transcriptions: data });
+  } catch (error) {
+    console.error("❌ Server Error:", error);
+    res.status(500).json({ error: "Failed to fetch transcriptions" });
   }
 });
 
