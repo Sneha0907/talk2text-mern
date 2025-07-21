@@ -33,39 +33,43 @@ export default function App() { //Defines a function component named App.
 
 
   // Upload file and request transcription
-  const handleUpload = async () => {
-    if (!file) {
-      setErrorMessage("Please select a file first!");
+  const handleUpload = async () => { //Uploading a file and getting transcription from the server takes time. We use async so the function doesn’t block other code while waiting.
+    if (!file) { //Checks if file is empty or null.
+      setErrorMessage("Please select a file first!"); //Updates the state to show an error message.
       return;
     }
 
 
 
-    // ✅ Validate file type on frontend
-    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
-    if (!allowedTypes.includes(file.type)) {
-      setErrorMessage("Invalid file type. Please upload an MP3 or WAV file.");
+    // Validate file type on frontend
+    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"]; //creates an array of allowed MIME types
+    if (!allowedTypes.includes(file.type)) { //Checks if the file’s type is in the allowed list.
+      setErrorMessage("Invalid file type. Please upload an MP3 or WAV file."); //Show an error message
       return;
     }
 
 
 
-    const formData = new FormData();
-    formData.append("audio", file);
+    const formData = new FormData(); //When uploading files, we can’t send them as plain text JSON. FormData helps send files in multipart/form-data to server.
+    formData.append("audio", file); //Adds a new entry to the FormData object.
+                                    //"audio" → The key (name of the form field).
+                                    //file → The value (the actual file selected by the user).
 
-    setLoading(true);
-    setErrorMessage("");
-    setTranscription("");
+    setLoading(true); //The upload process is starting, so we set loading state to true.
+    setErrorMessage(""); // Clears any previous error message.
+    setTranscription(""); //Clears any old transcription result.
 
+
+    
     try {
-      // ✅ Send request to backend
+      // Send request to backend
       const response = await axios.post("http://localhost:5000/transcribe", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscription(response.data.transcription);
       fetchHistory(); // Refresh history after new transcription
     } catch (error) {
-      // ✅ Show user-friendly error
+      // Show user-friendly error
       if (error.response && error.response.data.error) {
         setErrorMessage(error.response.data.error);
       } else {
