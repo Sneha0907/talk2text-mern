@@ -1,30 +1,45 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react"; //The main React library that we need to build components.
+                                                    // useState → Used to store and manage data (state) in a component.
+                                                    //useEffect → Used to run side effects (like fetching data or listening for changes).
+import axios from "axios";   //making HTTP requests (GET, POST, etc.) to servers.
 
-export default function App() {
-  // ✅ States for file, transcription, loading, history, and error message
-  const [file, setFile] = useState(null);
-  const [transcription, setTranscription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
+
+
+export default function App() { //Defines a function component named App.
+
+  // States for file, transcription, loading, history, and error message
+
+  const [file, setFile] = useState(null);  //declaring a state variable called file using useState().
+                                           //When the user uploads a file, we’ll call setFile(selectedFile).
+  const [transcription, setTranscription] = useState(""); //A variable to store the text transcription.
+  const [loading, setLoading] = useState(false); //A boolean (true/false) to show if the app is processing.
+  const [history, setHistory] = useState([]); //An array to store previous transcriptions.
+  const [errorMessage, setErrorMessage] = useState(""); //A string to show any error messages.
+
+
 
   useEffect(() => {
     fetchHistory(); // Load history on page load
   }, []);
 
-  // ✅ Handle file selection
+
+
+  // Handle file selection
   const handleFileChange = (e) => {
     setErrorMessage(""); // Clear old error message
-    setFile(e.target.files[0]);
+    setFile(e.target.files[0]); // Updates the state variable file with the selected file.
   };
 
-  // ✅ Upload file and request transcription
+
+
+  // Upload file and request transcription
   const handleUpload = async () => {
     if (!file) {
       setErrorMessage("Please select a file first!");
       return;
     }
+
+
 
     // ✅ Validate file type on frontend
     const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
@@ -32,6 +47,8 @@ export default function App() {
       setErrorMessage("Invalid file type. Please upload an MP3 or WAV file.");
       return;
     }
+
+
 
     const formData = new FormData();
     formData.append("audio", file);
@@ -59,7 +76,9 @@ export default function App() {
     }
   };
 
-  // ✅ Fetch transcription history
+
+
+  // Fetch transcription history
   const fetchHistory = async () => {
     try {
       const res = await axios.get("http://localhost:5000/transcriptions");
@@ -68,6 +87,8 @@ export default function App() {
       setErrorMessage("Failed to load history");
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-white text-gray-900 p-8">
