@@ -2,80 +2,101 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 export default function App() {
+  // ✅ States for file, transcription, loading, history, and error message
   const [file, setFile] = useState(null);
   const [transcription, setTranscription] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    fetchHistory();
+    fetchHistory(); // Load history on page load
   }, []);
 
-  const handleFileChange = (e) => setFile(e.target.files[0]);
+  // ✅ Handle file selection
+  const handleFileChange = (e) => {
+    setErrorMessage(""); // Clear old error message
+    setFile(e.target.files[0]);
+  };
 
+  // ✅ Upload file and request transcription
   const handleUpload = async () => {
-    if (!file) return alert("Please select a file first!");
+    if (!file) {
+      setErrorMessage("Please select a file first!");
+      return;
+    }
+
+    // ✅ Validate file type on frontend
+    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMessage("Invalid file type. Please upload an MP3 or WAV file.");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("audio", file);
 
+    setLoading(true);
+    setErrorMessage("");
+    setTranscription("");
+
     try {
-      setLoading(true);
-      setTranscription("");
+      // ✅ Send request to backend
       const response = await axios.post("http://localhost:5000/transcribe", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscription(response.data.transcription);
-      fetchHistory();
+      fetchHistory(); // Refresh history after new transcription
     } catch (error) {
-      alert("Error uploading file");
+      // ✅ Show user-friendly error
+      if (error.response && error.response.data.error) {
+        setErrorMessage(error.response.data.error);
+      } else {
+        setErrorMessage("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Fetch transcription history
   const fetchHistory = async () => {
     try {
       const res = await axios.get("http://localhost:5000/transcriptions");
       setHistory(res.data.transcriptions);
-    } catch (error) {
-      console.error("Error fetching history", error);
+    } catch {
+      setErrorMessage("Failed to load history");
     }
   };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 p-8">
-      {/* App Name */}
-      <h1 className="text-4xl font-bold text-center mb-8 text-[#1F487E]">
-        Talk2Text App
-      </h1>
+      {/* Title */}
+      <h1 className="text-4xl font-bold text-center mb-8 text-[#1F487E]">Talk2Text</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-6xl mx-auto">
-        {/* Left Side - Upload & Latest Transcription */}
+        {/* Upload Section */}
         <div className="bg-white shadow-lg rounded-xl p-8 border border-gray-200">
-          {/* Icon */}
           <div className="flex justify-center mb-4">
             <div className="bg-[#1F487E] p-4 rounded-full">
               <span className="text-white text-3xl">🎤</span>
             </div>
           </div>
 
-          {/* Title */}
-          <h2 className="text-2xl font-bold text-[#1F487E] mb-2 text-center">
-            Transcribe your audio file
-          </h2>
-          <p className="text-gray-500 mb-6 text-center">
-            Upload an audio file from your device to transcribe.
-          </p>
+          <h2 className="text-2xl font-bold text-[#1F487E] mb-2 text-center">Transcribe your audio file</h2>
+          <p className="text-gray-500 mb-6 text-center">Upload an audio file to transcribe.</p>
 
-          {/* Upload Box */}
+          {/* File Upload */}
           <label className="block border-2 border-dashed border-gray-300 rounded-lg py-8 cursor-pointer hover:border-[#247BA0] transition text-center">
             <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
             <p className="text-gray-500">
-              <span className="text-[#1F487E] font-semibold">+</span> Click to upload and transcribe
+              <span className="text-[#1F487E] font-semibold">+</span> Click to upload
             </p>
             {file && <p className="text-gray-700 mt-2">{file.name}</p>}
           </label>
+
+          {/* Error Message */}
+          {errorMessage && <p className="text-red-500 mt-4 text-center font-semibold">{errorMessage}</p>}
 
           {/* Upload Button */}
           <button
@@ -88,14 +109,14 @@ export default function App() {
 
           {/* Latest Transcription */}
           {transcription && (
-            <div className="mt-6 bg-gray-100 rounded-lg p-4 text-left">
+            <div className="mt-6 bg-gray-100 rounded-lg p-4">
               <h3 className="text-[#1F487E] font-semibold mb-2">Latest Transcription:</h3>
-              <p className="text-gray-700">{transcription}</p>
+              <p>{transcription}</p>
             </div>
           )}
         </div>
 
-        {/* Right Side - History Section */}
+        {/* History Section */}
         <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
           <h2 className="text-2xl font-bold text-[#1F487E] mb-4">Previous Transcriptions</h2>
           {history.length === 0 ? (

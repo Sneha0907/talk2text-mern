@@ -9,123 +9,95 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 const PORT = 5000;
 
-// ✅ Allow frontend (React Vite) requests & parse JSON
-app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST"],
-}));
+// ✅ Allow requests from React app and parse JSON
+app.use(cors({ origin: "http://localhost:5173", methods: ["GET", "POST"] }));
 app.use(express.json());
 
-// ✅ Google Speech-to-Text Client
-const client = new speech.SpeechClient({
-  keyFilename: "google-credentials.json", // Ensure the file exists in root
-});
+// ✅ Initialize Google Speech-to-Text client using credentials
+const client = new speech.SpeechClient({ keyFilename: "google-credentials.json" });
 
-// ✅ Supabase Client
+// ✅ Initialize Supabase client
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// ✅ Multer Setup for File Upload
+// ✅ Multer setup for file uploads (with type validation)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
-});
-const upload = multer({ storage });
-
-// ✅ API Health Check
-app.get("/", (req, res) => {
-  res.send("✅ API is running...");
+  destination: (req, file, cb) => cb(null, "uploads/"), // Save files in 'uploads' folder
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname), // Unique file name
 });
 
-// ✅ Transcription Route
-app.post("/transcribe", upload.single("audio"), async (req, res) => {
-  console.log("✅ Received request to /transcribe");
-
-  try {
-    if (!req.file) {
-      console.error("❌ No file uploaded");
-      return res.status(400).json({ error: "No file uploaded" });
+// ✅ Allow only audio file types (MP3, WAV)
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only MP3 and WAV files are allowed."));
     }
+  },
+});
 
-    console.log("✅ Uploaded File:", req.file.originalname);
+// ✅ Health Check Endpoint
+app.get("/", (req, res) => res.send("✅ API is running..."));
+
+// ✅ Transcription API
+app.post("/transcribe", upload.single("audio"), async (req, res) => {
+  try {
+    // Check if file exists
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    // Convert audio file to Base64 for Google API
     const filePath = req.file.path;
-
-    // ✅ Convert Audio to Base64
-    console.log("🔍 Reading audio file...");
     const audioBytes = fs.readFileSync(filePath).toString("base64");
-    console.log("✅ Audio file converted to Base64");
 
-    // ✅ Google Speech-to-Text Request
+    // Google API configuration
     const request = {
       audio: { content: audioBytes },
-      config: {
-        encoding: "MP3", // Change to LINEAR16 for WAV
-        sampleRateHertz: 16000,
-        languageCode: "en-US",
-      },
+      config: { encoding: "MP3", sampleRateHertz: 16000, languageCode: "en-US" },
     };
 
-    console.log("🔍 Sending request to Google Speech API...");
-    const [response] = await client.recognize(request);
-    console.log("✅ Google API response received");
-
-    // ✅ Extract Transcription
-    const transcription = response.results
-      .map(r => r.alternatives[0].transcript)
-      .join("\n");
-
-    if (!transcription) {
-      console.error("❌ No transcription generated");
-      return res.status(500).json({ error: "No transcription generated" });
+    // ✅ Send audio to Google Speech API
+    let transcription;
+    try {
+      const [response] = await client.recognize(request);
+      transcription = response.results.map(r => r.alternatives[0].transcript).join("\n");
+    } catch (apiError) {
+      console.error("Google API Error:", apiError);
+      return res.status(500).json({ error: "Speech-to-Text service failed" });
     }
 
-    console.log("✅ Transcription:", transcription);
+    // If no text detected
+    if (!transcription) return res.status(500).json({ error: "No speech detected in the audio" });
 
-    // ✅ Save Data in Supabase
-    console.log("🔍 Inserting into Supabase...");
+    // ✅ Save transcription into Supabase
     const { data, error } = await supabase
       .from("audio_files")
-      .insert([
-        {
-          file_name: req.file.originalname,
-          file_url: "", // Later you can add Supabase Storage URL
-          transcription: transcription,
-        },
-      ])
+      .insert([{ file_name: req.file.originalname, file_url: "", transcription }])
       .select();
 
-    if (error) {
-      console.error("❌ Supabase Insert Error:", error);
-      return res.status(500).json({ error: "Failed to save in database" });
-    }
+    if (error) return res.status(500).json({ error: "Failed to save transcription" });
 
-    console.log("✅ Data saved in Supabase:", data);
-
-    res.json({ message: "Success", transcription, db: data });
-
+    res.json({ message: "Success", transcription });
   } catch (error) {
-    console.error("❌ Server Error:", error);
-    res.status(500).json({ error: "Transcription failed" });
+    console.error(error.message);
+    res.status(500).json({ error: error.message || "Transcription failed" });
   }
 });
 
-// ✅ Fetch Previous Transcriptions Route
+// ✅ Fetch Previous Transcriptions API
 app.get("/transcriptions", async (req, res) => {
   try {
-    console.log("🔍 Fetching previous transcriptions...");
     const { data, error } = await supabase
       .from("audio_files")
       .select("id, file_name, transcription, created_at")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("❌ Error fetching transcriptions:", error);
-      return res.status(500).json({ error: "Failed to fetch transcriptions" });
-    }
+    if (error) return res.status(500).json({ error: "Failed to fetch transcriptions" });
 
     res.json({ message: "Success", transcriptions: data });
-  } catch (error) {
-    console.error("❌ Server Error:", error);
-    res.status(500).json({ error: "Failed to fetch transcriptions" });
+  } catch {
+    res.status(500).json({ error: "Server error while fetching history" });
   }
 });
 
