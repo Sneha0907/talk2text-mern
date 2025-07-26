@@ -7,22 +7,27 @@ const speech = require("@google-cloud/speech"); //This loads Google Cloud Speech
 const { createClient } = require("@supabase/supabase-js"); //Supabase is a database + authentication service.createClient → Function to create a connection to your Supabase project.
 
 const app = express(); //Creates an instance of an Express application.app is now your server.
-const PORT = 5000; //Sets the server port to 5000.When you start the server, it will run at http://localhost:5000.
+const PORT = process.env.PORT || 5000;
 
-
+// ✅ CORS Setup: Allow local + deployed frontend
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL || "https://your-frontend-domain.com"
+];
 
 // Allow requests from React app and parse JSON
-app.use(cors({ 
-  origin: "http://localhost:5173",  // Allow requests from your frontend
-  methods: ["GET", "POST"]  // Allow these HTTP methods
-}));   //Your frontend (React) is running on localhost:5173, and your backend is on localhost:5000
-app.use(express.json()); //Lets backend read JSON data from frontend
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST"]
+}));
+
 
 
 
 // Initialize Google Speech-to-Text client using credentials
-const client = new speech.SpeechClient({ keyFilename: "google-credentials.json" }); //speech.SpeechClient is a class provided by the @google-cloud/speech package.This client will allow your backend to communicate with Google’s Speech-to-Text API.
-//keyFilename tells the client where to find your credentials file.This file (google-credentials.json) is downloaded from Google Cloud Console when you create a service account for your project.
+const client = new speech.SpeechClient({
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json",
+});
 
 
 
@@ -118,4 +123,5 @@ app.get("/transcriptions/:user_id", async (req, res) => {
 });
 
 
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
