@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import supabase from "./supabaseClient";
+import API_BASE_URL from "./config";
 
 export default function App() {
   const [file, setFile] = useState(null);
@@ -14,6 +15,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
 
+  // ✅ Check user session
   useEffect(() => {
     const getSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -63,7 +65,7 @@ export default function App() {
     setTranscription("");
 
     try {
-      const response = await axios.post("http://localhost:5000/transcribe", formData, {
+      const response = await axios.post(`${API_BASE_URL}/transcribe`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscription(response.data.transcription);
@@ -81,7 +83,7 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/transcriptions/${user.id}`);
+      const res = await axios.get(`${API_BASE_URL}/transcriptions/${user.id}`);
       setHistory(res.data.transcriptions);
     } catch {
       setErrorMessage("Failed to load history");
@@ -100,13 +102,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-  await supabase.auth.signOut();
-  setUser(null);
-  setHistory([]); // ✅ Clear previous history
-  setFile(null); // ✅ Optional: Reset file
-  setTranscription(""); // ✅ Optional: Clear last transcription
-};
-
+    await supabase.auth.signOut();
+    setUser(null);
+    setHistory([]);
+    setFile(null);
+    setTranscription("");
+  };
 
   const handlePasswordReset = async () => {
     if (!email) {
@@ -203,11 +204,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Upload & History */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-6xl mx-auto">
-        {/* Upload Section */}
         <div className="bg-white shadow-lg rounded-xl p-8 border border-gray-200">
-          {/* ✅ Mic Icon */}
           <div className="flex justify-center mb-4">
             <div className="bg-[#1F487E] p-4 rounded-full">
               <span className="text-white text-3xl">🎤</span>
@@ -254,7 +252,6 @@ export default function App() {
           )}
         </div>
 
-        {/* History Section */}
         <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
           <h2 className="text-2xl font-bold text-[#1F487E] mb-4">
             Previous Transcriptions
