@@ -92,7 +92,7 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
     // ✅ Save transcription into Supabase
     const { data, error } = await supabase
       .from("audio_files")
-      .insert([{ file_name: req.file.originalname, file_url: "", transcription }])
+      .insert([{ file_name: req.file.originalname, transcription, user_id: req.body.user_id }])
       .select();
 
     if (error) return res.status(500).json({ error: "Failed to save transcription" });
@@ -105,21 +105,17 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
 });
 
 // Fetch Previous Transcriptions API
-app.get("/transcriptions", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("audio_files")
-      .select("id, file_name, transcription, created_at")
-      .order("created_at", { ascending: false });
+app.get("/transcriptions/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  const { data, error } = await supabase
+    .from("audio_files")
+    .select("id, file_name, transcription, created_at")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: "Failed to fetch transcriptions" });
-
-    res.json({ message: "Success", transcriptions: data });
-  } catch {
-    res.status(500).json({ error: "Server error while fetching history" });
-  }
+  if (error) return res.status(500).json({ error: "Failed to fetch transcriptions" });
+  res.json({ message: "Success", transcriptions: data });
 });
-
 
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
