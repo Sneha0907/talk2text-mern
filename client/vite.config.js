@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // ✅ Important for Netlify & GitHub Pages
-})
+  base: './', // ✅ Important for Netlify to load assets correctly
+});
