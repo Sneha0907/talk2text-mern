@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Backend for Talk2Text project",
   "main": "index.js",
-  "homepage": "./",
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
