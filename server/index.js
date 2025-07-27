@@ -10,10 +10,8 @@ const app = express(); //Creates an instance of an Express application.app is no
 const PORT = process.env.PORT || 5000;
 
 // ✅ CORS Setup: Allow local + deployed frontend
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.FRONTEND_URL || "https://your-frontend-domain.com"
-];
+const allowedOrigins = ["http://localhost:5173", "https://talk2text.vercel.app"];
+
 
 // Allow requests from React app and parse JSON
 app.use(cors({
