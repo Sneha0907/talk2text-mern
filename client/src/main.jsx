@@ -6,10 +6,12 @@ import ResetPassword from "./ResetPassword";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-    </Routes>
-  </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter basename="/">
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Routes>
+    </BrowserRouter>
+  </React.StrictMode>
 );
