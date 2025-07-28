@@ -1,113 +1,119 @@
-require("dotenv").config(); //API keys and secrets in .env (not in code) for security.
-const express = require("express"); // Loads the express module. We will use this to create our server and define API routes.
-const multer = require("multer"); //Multer is a middleware to handle file uploads in Node.js. When a user uploads an audio file, multer helps us read and store that file.
-const cors = require("cors"); // CORS (Cross-Origin Resource Sharing).Allows your frontend (React app) and backend (Node server) to communicate when they are on different domains or ports.
-const fs = require("fs"); //FS is a built-in Node.js module for working with the file system.It allows reading, writing, and deleting files on the server.
-const speech = require("@google-cloud/speech"); //This loads Google Cloud Speech-to-Text SDK.It will be used to convert the uploaded audio file into text transcription.
-const { createClient } = require("@supabase/supabase-js"); //Supabase is a database + authentication service.createClient → Function to create a connection to your Supabase project.
+require("dotenv").config();
+const express = require("express");
+const multer = require("multer");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+const speech = require("@google-cloud/speech");
+const { createClient } = require("@supabase/supabase-js");
 
-const app = express(); //Creates an instance of an Express application.app is now your server.
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ CORS Setup: Allow local + deployed frontend
-const allowedOrigins = ["http://localhost:5173", "https://talk2text.vercel.app"];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://talk2text.vercel.app"
+];
 
-
-// Allow requests from React app and parse JSON
 app.use(cors({
   origin: allowedOrigins,
   methods: ["GET", "POST"]
 }));
 
+// ✅ Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+  console.log("📁 Created uploads directory");
+} else {
+  console.log("📁 Uploads directory already exists");
+}
 
-
-
-// Initialize Google Speech-to-Text client using credentials
+// ✅ Google Speech Client
+console.log("🔑 Using Google Credentials at:", process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json");
 const client = new speech.SpeechClient({
   keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json",
 });
 
-
-
-// Initialize Supabase client
+// ✅ Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-
-
-// ✅ Multer setup for file uploads (with type validation)
+// ✅ Multer Setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"), // Save files in 'uploads' folder
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname), // Unique file name
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 
-
-
-// ✅ Allow only audio file types (MP3, WAV)
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Invalid file type. Only MP3 and WAV files are allowed."));
-    }
+    if (allowedTypes.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("❌ Invalid file type"));
   },
 });
 
-
-
-// ✅ Health Check Endpoint
+// ✅ Health Check
 app.get("/", (req, res) => res.send("✅ API is running..."));
 
-
-
-// ✅ Transcription API
-app.post("/transcribe", upload.single("audio"), async (req, res) => {
-
+// ✅ Transcribe Route with Middleware Error Logging
+app.post("/transcribe", (req, res, next) => {
+  upload.single("audio")(req, res, function (err) {
+    if (err) {
+      console.error("💥 Multer error:", err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    console.log("🚀 Received POST /transcribe");
+    next();
+  });
+}, async (req, res) => {
   try {
-    // Check if file exists
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    // Convert audio file to Base64 for Google API
     const filePath = req.file.path;
-    const audioBytes = fs.readFileSync(filePath).toString("base64");
+    const fileName = req.file.originalname;
+    console.log("📁 Uploaded file:", filePath);
 
-    // Google API configuration
+    const audioBytes = fs.readFileSync(filePath).toString("base64");
+    console.log("🎙️ Transcribing:", fileName);
+
     const request = {
       audio: { content: audioBytes },
       config: { encoding: "MP3", sampleRateHertz: 16000, languageCode: "en-US" },
     };
 
-    // ✅ Send audio to Google Speech API
     let transcription;
     try {
       const [response] = await client.recognize(request);
       transcription = response.results.map(r => r.alternatives[0].transcript).join("\n");
-    } catch (apiError) {
-      console.error("Google API Error:", apiError);
-      return res.status(500).json({ error: "Speech-to-Text service failed" });
+      console.log("📝 Transcription result:", transcription);
+    } catch (apiErr) {
+      console.error("❌ Google API Error:", apiErr);
+      return res.status(500).json({ error: "Speech-to-Text failed" });
     }
 
-    // If no text detected
-    if (!transcription) return res.status(500).json({ error: "No speech detected in the audio" });
+    if (!transcription) return res.status(500).json({ error: "No speech detected" });
 
-    // ✅ Save transcription into Supabase
     const { data, error } = await supabase
       .from("audio_files")
-      .insert([{ file_name: req.file.originalname, transcription, user_id: req.body.user_id }])
+      .insert([{ file_name: fileName, transcription, user_id: req.body.user_id }])
       .select();
 
-    if (error) return res.status(500).json({ error: "Failed to save transcription" });
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      return res.status(500).json({ error: "Failed to save transcription" });
+    }
 
+    console.log("📥 Saved to Supabase:", data);
     res.json({ message: "Success", transcription });
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: error.message || "Transcription failed" });
+
+  } catch (err) {
+    console.error("🔥 General error:", err.message);
+    res.status(500).json({ error: err.message || "Unknown error" });
   }
 });
 
-// Fetch Previous Transcriptions API
+// ✅ Fetch Previous Transcriptions
 app.get("/transcriptions/:user_id", async (req, res) => {
   const { user_id } = req.params;
   const { data, error } = await supabase
@@ -120,6 +126,4 @@ app.get("/transcriptions/:user_id", async (req, res) => {
   res.json({ message: "Success", transcriptions: data });
 });
 
-
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
-
