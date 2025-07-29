@@ -1,0 +1,36 @@
+{
+  "appName": "Talk2Text",
+  "version": "1.0.0",
+  "description": "A voice transcription app with Google Speech-to-Text and Supabase integration.",
+  "maintainer": {
+    "name": "Sneha",
+    "email": "sneha09072001@gmail.com",
+    "github": "https://github.com/Sneha0907"
+  },
+  "environments": {
+    "development": {
+      "apiBaseUrl": "http://localhost:5000",
+      "frontendUrl": "http://localhost:5173"
+    },
+    "production": {
+      "apiBaseUrl": "https://talk2text-backend.onrender.com",
+      "frontendUrl": "https://talk2text-mern.vercel.app"
+    }
+  },
+  "features": [
+    "Audio transcription (MP3/WAV)",
+    "User authentication via Supabase",
+    "Transcription history tracking",
+    "Responsive UI"
+  ],
+  "upgradeHistory": [
+    {
+      "version": "1.0.0",
+      "date": "2025-07-29",
+      "changes": [
+        "Initial release with login, upload, transcription, and history",
+        "Deployment to Vercel (frontend) and Render (backend)"
+      ]
+    }
+  ]
+}
