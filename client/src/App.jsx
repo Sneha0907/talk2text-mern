@@ -16,22 +16,25 @@ export default function App() {
   const [isLogin, setIsLogin] = useState(true);
 
   useEffect(() => {
-    const getSession = async () => {
+    const checkSessionAndFetch = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) setUser(data.session.user);
+      const currentUser = data?.session?.user || null;
+      setUser(currentUser);
+      if (currentUser) {
+        await fetchHistory(currentUser.id);
+      }
     };
-    getSession();
+
+    checkSessionAndFetch();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const u = session?.user || null;
+      setUser(u);
+      if (u) fetchHistory(u.id);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => listener?.subscription?.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user) fetchHistory();
-  }, [user]);
 
   const handleFileChange = (e) => {
     setErrorMessage("");
@@ -67,7 +70,7 @@ export default function App() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscription(response.data.transcription);
-      fetchHistory();
+      fetchHistory(user.id);
     } catch (error) {
       console.error("❌ Upload failed:", error.response?.data || error.message);
       if (error.response?.data?.error) {
@@ -80,9 +83,9 @@ export default function App() {
     }
   };
 
-  const fetchHistory = async () => {
-    if (!user) return;
-    const url = `${API_BASE_URL}/transcriptions/${user.id}`;
+  const fetchHistory = async (userId) => {
+    if (!userId) return;
+    const url = `${API_BASE_URL}/transcriptions/${userId}`;
     console.log("📥 Fetching transcription history from:", url);
 
     try {
