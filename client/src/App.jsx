@@ -15,7 +15,6 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
 
-  // ✅ Check user session
   useEffect(() => {
     const getSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -44,7 +43,6 @@ export default function App() {
       setErrorMessage("Please select a file first!");
       return;
     }
-
     if (!user) {
       setErrorMessage("Please log in to upload a file.");
       return;
@@ -71,7 +69,8 @@ export default function App() {
       setTranscription(response.data.transcription);
       fetchHistory();
     } catch (error) {
-      if (error.response && error.response.data.error) {
+      console.error("❌ Upload failed:", error.response?.data || error.message);
+      if (error.response?.data?.error) {
         setErrorMessage(error.response.data.error);
       } else {
         setErrorMessage("Something went wrong. Please try again.");
@@ -82,10 +81,16 @@ export default function App() {
   };
 
   const fetchHistory = async () => {
+    if (!user) return;
+    const url = `${API_BASE_URL}/transcriptions/${user.id}`;
+    console.log("📥 Fetching transcription history from:", url);
+
     try {
-      const res = await axios.get(`${API_BASE_URL}/transcriptions/${user.id}`);
+      const res = await axios.get(url);
+      console.log("✅ History fetched:", res.data);
       setHistory(res.data.transcriptions);
-    } catch {
+    } catch (err) {
+      console.error("❌ Failed to load history:", err.response?.data || err.message);
       setErrorMessage("Failed to load history");
     }
   };
@@ -133,9 +138,7 @@ export default function App() {
           <div className="flex mb-6 border-b border-gray-300">
             <button
               className={`flex-1 py-3 text-lg font-semibold transition ${
-                isLogin
-                  ? "border-b-4 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-blue-500"
+                isLogin ? "border-b-4 border-blue-500 text-blue-600" : "text-gray-500 hover:text-blue-500"
               }`}
               onClick={() => setIsLogin(true)}
             >
@@ -143,9 +146,7 @@ export default function App() {
             </button>
             <button
               className={`flex-1 py-3 text-lg font-semibold transition ${
-                !isLogin
-                  ? "border-b-4 border-green-500 text-green-600"
-                  : "text-gray-500 hover:text-green-500"
+                !isLogin ? "border-b-4 border-green-500 text-green-600" : "text-gray-500 hover:text-green-500"
               }`}
               onClick={() => setIsLogin(false)}
             >
@@ -212,29 +213,18 @@ export default function App() {
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-[#1F487E] mb-4 text-center">
-            Transcribe your audio file
-          </h2>
-          <p className="text-gray-500 mb-6 text-center">
-            Upload an audio file to transcribe.
-          </p>
+          <h2 className="text-2xl font-bold text-[#1F487E] mb-4 text-center">Transcribe your audio file</h2>
+          <p className="text-gray-500 mb-6 text-center">Upload an audio file to transcribe.</p>
 
           <label className="block border-2 border-dashed border-gray-300 rounded-lg py-8 cursor-pointer hover:border-[#247BA0] transition text-center">
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
             <p className="text-gray-500">
               <span className="text-[#1F487E] font-semibold">+</span> Click to upload
             </p>
             {file && <p className="text-gray-700 mt-2">{file.name}</p>}
           </label>
 
-          {errorMessage && (
-            <p className="text-red-500 mt-4 text-center font-semibold">{errorMessage}</p>
-          )}
+          {errorMessage && <p className="text-red-500 mt-4 text-center font-semibold">{errorMessage}</p>}
 
           <button
             onClick={handleUpload}
@@ -253,9 +243,7 @@ export default function App() {
         </div>
 
         <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
-          <h2 className="text-2xl font-bold text-[#1F487E] mb-4">
-            Previous Transcriptions
-          </h2>
+          <h2 className="text-2xl font-bold text-[#1F487E] mb-4">Previous Transcriptions</h2>
           {!user ? (
             <p className="text-gray-500">Login to view your history.</p>
           ) : history.length === 0 ? (
@@ -263,10 +251,7 @@ export default function App() {
           ) : (
             <div className="max-h-[500px] overflow-y-auto space-y-4">
               {history.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-4 border border-gray-200 rounded-lg shadow hover:shadow-lg transition bg-gray-50"
-                >
+                <div key={item.id} className="p-4 border border-gray-200 rounded-lg shadow hover:shadow-lg transition bg-gray-50">
                   <strong className="text-gray-800">{item.file_name}</strong>
                   <p className="text-gray-600 mt-1">{item.transcription}</p>
                   <span className="text-xs text-gray-400 mt-2 block">
