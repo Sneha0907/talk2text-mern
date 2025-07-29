@@ -8,6 +8,7 @@ server/node_modules
 # Avoids pushing compiled files (Vite/React build artifacts).
 dist
 build
+uploads
 
 # Environment files
 # Hides sensitive API keys (for Whisper, Google API, etc.).
