@@ -1,27 +1,27 @@
-# Node modules
-# Prevents large dependency folders from being pushed (they can be reinstalled using npm install).
-node_modules
-client/node_modules
-server/node_modules
+# === NODE ===
+client/node_modules/
+server/node_modules/
 
-# Build output
-# Avoids pushing compiled files (Vite/React build artifacts).
-dist
-build
-uploads
-
-# Environment files
-# Hides sensitive API keys (for Whisper, Google API, etc.).
+# === ENV & Credentials ===
 .env
-.env.local
+client/.env
+server/.env
 
-# OS/System files
-# Mac and Windows system-generated files → unnecessary in Git.
+# === BUILD ARTIFACTS ===
+client/dist/
+server/uploads/
+
+# === LOGS ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === SYSTEM FILES ===
 .DS_Store
 Thumbs.db
 
-# Logs
-# Keeps repo clean from error/debug logs.
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+# === IDES & TOOLS ===
+.vscode/
+.idea/
+*.swp

@@ -3,18 +3,21 @@ import axios from "axios";
 import supabase from "./supabaseClient";
 import API_BASE_URL from "./config";
 
+// Main component
 export default function App() {
-  const [file, setFile] = useState(null);
-  const [transcription, setTranscription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [user, setUser] = useState(null);
+  // === State declarations ===
+  const [file, setFile] = useState(null); // Uploaded file
+  const [transcription, setTranscription] = useState(""); // Latest transcription result
+  const [loading, setLoading] = useState(false); // Upload state
+  const [history, setHistory] = useState([]); // Past transcriptions
+  const [errorMessage, setErrorMessage] = useState(""); // Error messages
+  const [user, setUser] = useState(null); // Supabase authenticated user
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState(""); // Email input
+  const [password, setPassword] = useState(""); // Password input
+  const [isLogin, setIsLogin] = useState(true); // Toggle login/signup mode
 
+// === On component mount, check Supabase session and load history if logged in ===
   useEffect(() => {
     const checkSessionAndFetch = async () => {
       const { data } = await supabase.auth.getSession();
@@ -27,6 +30,7 @@ export default function App() {
 
     checkSessionAndFetch();
 
+// Listen to auth state changes (login/logout/signup)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user || null;
       setUser(u);
@@ -36,11 +40,13 @@ export default function App() {
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
+// === File input change handler ===
   const handleFileChange = (e) => {
     setErrorMessage("");
     setFile(e.target.files[0]);
   };
 
+// === Upload audio file and get transcription ===
   const handleUpload = async () => {
     if (!file) {
       setErrorMessage("Please select a file first!");
@@ -70,9 +76,9 @@ export default function App() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscription(response.data.transcription);
-      fetchHistory(user.id);
+      fetchHistory(user.id); // refresh history after new upload
     } catch (error) {
-      console.error("❌ Upload failed:", error.response?.data || error.message);
+      console.error("Upload failed:", error.response?.data || error.message);
       if (error.response?.data?.error) {
         setErrorMessage(error.response.data.error);
       } else {
@@ -83,21 +89,23 @@ export default function App() {
     }
   };
 
+// === Fetch transcription history from backend ===
   const fetchHistory = async (userId) => {
     if (!userId) return;
     const url = `${API_BASE_URL}/transcriptions/${userId}`;
-    console.log("📥 Fetching transcription history from:", url);
+    console.log("Fetching transcription history from:", url);
 
     try {
       const res = await axios.get(url);
-      console.log("✅ History fetched:", res.data);
+      console.log("History fetched:", res.data);
       setHistory(res.data.transcriptions);
     } catch (err) {
-      console.error("❌ Failed to load history:", err.response?.data || err.message);
+      console.error("Failed to load history:", err.response?.data || err.message);
       setErrorMessage("Failed to load history");
     }
   };
 
+// === Supabase Auth Handlers ===
   const handleSignup = async () => {
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) alert(error.message);
@@ -132,6 +140,7 @@ export default function App() {
     }
   };
 
+// === UI Rendering ===
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
       <h1 className="text-4xl font-bold text-center mb-8 text-[#1F487E]">Talk2Text</h1>

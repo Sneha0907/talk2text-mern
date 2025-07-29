@@ -21,25 +21,25 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Ensure uploads folder exists
+// Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
-  console.log("📁 Created uploads directory");
+  console.log("Created uploads directory");
 } else {
-  console.log("📁 Uploads directory already exists");
+  console.log("Uploads directory already exists");
 }
 
-// ✅ Google Speech Client
-console.log("🔑 Using Google Credentials at:", process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json");
+// Google Speech Client
+console.log("Using Google Credentials at:", process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json");
 const client = new speech.SpeechClient({
   keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || "google-credentials.json",
 });
 
-// ✅ Supabase
+// Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// ✅ Multer Setup
+// Multer Setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
@@ -50,21 +50,21 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
     if (allowedTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("❌ Invalid file type"));
+    else cb(new Error("Invalid file type"));
   },
 });
 
-// ✅ Health Check
+// Health Check
 app.get("/", (req, res) => res.send("✅ API is running..."));
 
-// ✅ Transcribe Route with Middleware Error Logging
+// Transcribe Route with Middleware Error Logging
 app.post("/transcribe", (req, res, next) => {
   upload.single("audio")(req, res, function (err) {
     if (err) {
-      console.error("💥 Multer error:", err.message);
+      console.error("Multer error:", err.message);
       return res.status(400).json({ error: err.message });
     }
-    console.log("🚀 Received POST /transcribe");
+    console.log("Received POST /transcribe");
     next();
   });
 }, async (req, res) => {
@@ -73,10 +73,10 @@ app.post("/transcribe", (req, res, next) => {
 
     const filePath = req.file.path;
     const fileName = req.file.originalname;
-    console.log("📁 Uploaded file:", filePath);
+    console.log("Uploaded file:", filePath);
 
     const audioBytes = fs.readFileSync(filePath).toString("base64");
-    console.log("🎙️ Transcribing:", fileName);
+    console.log("Transcribing:", fileName);
 
     const request = {
       audio: { content: audioBytes },
@@ -87,9 +87,9 @@ app.post("/transcribe", (req, res, next) => {
     try {
       const [response] = await client.recognize(request);
       transcription = response.results.map(r => r.alternatives[0].transcript).join("\n");
-      console.log("📝 Transcription result:", transcription);
+      console.log("Transcription result:", transcription);
     } catch (apiErr) {
-      console.error("❌ Google API Error:", apiErr);
+      console.error("Google API Error:", apiErr);
       return res.status(500).json({ error: "Speech-to-Text failed" });
     }
 
@@ -101,20 +101,20 @@ app.post("/transcribe", (req, res, next) => {
       .select();
 
     if (error) {
-      console.error("❌ Supabase error:", error);
+      console.error("Supabase error:", error);
       return res.status(500).json({ error: "Failed to save transcription" });
     }
 
-    console.log("📥 Saved to Supabase:", data);
+    console.log("Saved to Supabase:", data);
     res.json({ message: "Success", transcription });
 
   } catch (err) {
-    console.error("🔥 General error:", err.message);
+    console.error("General error:", err.message);
     res.status(500).json({ error: err.message || "Unknown error" });
   }
 });
 
-// ✅ Fetch Previous Transcriptions
+// Fetch Previous Transcriptions
 app.get("/transcriptions/:user_id", async (req, res) => {
   const { user_id } = req.params;
   const { data, error } = await supabase
@@ -127,4 +127,4 @@ app.get("/transcriptions/:user_id", async (req, res) => {
   res.json({ message: "Success", transcriptions: data });
 });
 
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
